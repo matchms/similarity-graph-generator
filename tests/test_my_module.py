@@ -1,5 +1,6 @@
 """Tests for the similarity_graph_generator.my_module module.
 """
+
 import pytest
 from similarity_graph_generator.my_module import hello
 

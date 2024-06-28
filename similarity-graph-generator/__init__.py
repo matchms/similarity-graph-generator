@@ -1,4 +1,5 @@
 """Documentation about similarity_graph_generator"""
+
 import logging
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
