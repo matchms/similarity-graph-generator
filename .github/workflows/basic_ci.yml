@@ -32,9 +32,7 @@ jobs:
         run: |
           pip list
       - name: Run Black (check formatting)
-        run: black --check .
-      - name: Run isort (check import sorting)
-        run: isort --check-only .
+        run: black --diff --check --color .
       - name: Run linter (ruff)
         run: |
           ruff check .
