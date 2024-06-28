@@ -2,7 +2,7 @@
 """
 
 import pytest
-from similarity_graph_generator.my_module import hello
+from similaritygraphgenerator.my_module import hello
 
 
 def test_hello():
