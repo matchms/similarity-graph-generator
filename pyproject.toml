@@ -46,7 +46,7 @@ publishing = [
 ]
 
 [tool.black]
-line-length = 120
+line-length = 79
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -58,7 +58,7 @@ exclude = '''
 profile = "black"
 known_first_party = "similarity_graph_generator"
 src_paths = ["similarity_graph_generator", "tests"]
-line_length = "120"
+line_length = "79"
 
 [tool.pylint]  # If you opt to use pylint
 # Pylint configuration options
