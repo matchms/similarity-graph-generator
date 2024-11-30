@@ -1,13 +1,13 @@
-import math
-from collections import defaultdict
 from types import SimpleNamespace
 
 import networkx as nx
-import numpy as np
 from networkx.algorithms.community import modularity
 from sklearn.metrics import (
+    adjusted_mutual_info_score,
     adjusted_rand_score,
-    f1_score,
+    completeness_score,
+    fowlkes_mallows_score,
+    homogeneity_score,
     normalized_mutual_info_score,
 )
 
@@ -45,42 +45,40 @@ class Scores:
         scores for a given graphs partition. Can be used to evaluate and
         compare the community detection performance.
 
-        - Homogeneity: Average percentage of most common node type per
-          community.
-        - Weighted Homogeneity: Like Homogeneity score but takes all node
-          types of community into account not just most common one.
-        - Normalized Mutual Information: Measure similarity between true and
-          predicted labels of nodes.
+        - Homogeneity: Provides information if each cluster contains only
+          members of single class.
+        - Completenes: Provides information if all members if all members of
+          class are assigned to same cluster.
         - Community Size: Provides several informations about the number and
           size of the detected communities.
-        - Adjusted Rand Index: Measure similarity between true and predicted
-          labels of nodes, adjusted for chance.
-        - F1: The harmonic mean of precision and recall, reperesenting
-          accuracy.
         - Modularity: Measures strength of division of the graph into
           communities.
-        - Conductance: The average conductance score, measuring the quality of
-          the communities.
-        - Coverage: Indicates how much of the total connections are within the
-          detected communities.
 
+        - Adjusted Rand Index: Measure similarity between true and predicted
+          labels of nodes, adjusted for chance.
+        - Normalized Mutual Information: Measure similarity between true and
+          predicted labels of nodes.
+        - Adjusted Mutual Information: Measure similarity between true and
+          predicted labels of nodes, adjusted for chance.
+        - Fowlkes Mallows Index: Geometric mean of precision & recall.
         Returns:
             str: Formatted multi-line string giving an overview over the
                  different scores of a community partition of a graph.
         """
         result = (
             f"+++ SCORES FOR {self.name.upper()} +++\n"
+            f"+++ Quality metrics +++\n"
             f"Homogeneity: {self.homogeneity:.2f}\n"
-            f"Weighted Homogeneity: {self.weighted_homogeneity:.2f}\n"
-            f"Normalized Mutual Information: {self.nmi:.2f}\n"
+            f"Completeness: {self.completeness:.2f}\n"
             f"Community Size: {self.community_size.score:.2f} with "
             f"{self.community_size.num_com:.2f} communities and "
             f"{self.community_size.avg_com_size:.2f} avg community size\n"
-            f"Adjusted Rand Index: {self.ari:.2f}\n"
-            f"F1: {self.f1:.2f}\n"
             f"Modularity: {self.modularity:.2f}\n"
-            f"Conductance: {self.avg_conductance:.2f}\n"
-            f"Coverage: {self.coverage:.2f}\n"
+            f"+++ Clustering metrics +++\n"
+            f"Adjusted Rand Index: {self.ari:.2f}\n"
+            f"Normalized Mutual Information: {self.nmi:.2f}\n"
+            f"Adjusted Mutual Information: {self.ami:.2f}\n"
+            f"Fowlkes Mallows Index: {self.fmi:.2f}\n"
         )
         return result
 
@@ -93,98 +91,43 @@ class Scores:
             self: Instance witch calculated score attributes.
         """
         self.calc_homogeneity()
-        self.calc_weighted_homogeneity()
-        self.calc_normalized_mutual_information()
+        self.calc_completeness()
         self.calc_community_size()
-        self.calc_adjusted_rand_index()
-        self.calc_f1_score()
         self.calc_modularity()
-        self.calc_conductance()
-        self.calc_coverage()
+
+        self.calc_adjusted_rand_index()
+        self.calc_normalized_mutual_information()
+        self.calc_adjusted_mutual_information()
+        self.calc_fowlkes_mallows()
         return self
+
+    """
+    QUALITY METRICS
+    """
 
     def calc_homogeneity(self):
         """
-        Calculate the homogeneity for each community in a graph by identifying
-        most common node type within each community.
-        Homogeneity score for each community is defined as percentage of nodes
-        in that community which belong to most common node type.
-        The total homogeneity score is defined as average of all computed
-        homogeneity scoroes.
+        Calculate the homogeneity score between true and predicted
+        labels using 'homogeneity_score' function from scikit-learn.
+        Clustering result satisfies homogeneity when each cluster
+        conatains only members of single class.
+        Score between [0,1]:
+        1 -> indicates perfect homogeneous labeling
         """
-        community_scores = []
+        self.homogeneity = homogeneity_score(
+            self.true_labels, self.predicted_labels
+        )
 
-        for community_id, subgraph in self.subgraphs.items():
-            type_counts = defaultdict(int)
-            for node in subgraph:
-                node_type = self.graph.nodes[node]["type"]
-                type_counts[node_type] += 1
-
-            # Calculate score based on most common community type
-            most_common_type_count = max(type_counts.values())
-            score = (most_common_type_count / len(subgraph)) * 100
-
-            community_scores.append(score)
-
-        all_scores = 0
-        for i, score in enumerate(community_scores):
-            all_scores += score
-
-        self.homogeneity = all_scores / len(community_scores)
-
-    def calc_weighted_homogeneity(self):
+    def calc_completeness(self):
         """
-        Calculate the weighted homogeneity for each community in a graph by
-        computing the distribution of node types within each community based
-        on entropy.
-        High entropy -> great node type diversity in community
-        Low entropy -> more homogeneous distribution
-        Entropy score normalized to [0, 100], with 100 representing perfect
-        homogeneity, the total weighted homogeneity score is defined as average
-        of all computed homogeneity scores.
+        Calculate the completeness score between true and predicted
+        labels using 'completeness_score' function from scikit-learn.
+        Clustering result satisfies homogeneity when all members of
+        given class assigned to same cluster.
+        Score between [0,1]:
+        1 -> indicates perfect complete labeling
         """
-        community_scores = []
-
-        for community_id, subgraph in self.subgraphs.items():
-            type_counts = defaultdict(int)
-            for node in subgraph:
-                node_type = self.graph.nodes[node]["type"]
-                type_counts[node_type] += 1
-
-            total_nodes = len(subgraph)
-            entropy = 0
-            for count in type_counts.values():
-                proportion = count / total_nodes
-                entropy -= proportion * math.log(proportion, 2)
-
-            # Normalize entropy to [0,100]
-            max_entropy = math.log(len(type_counts), 2)
-            if max_entropy > 0:
-                score = (1 - (entropy / max_entropy)) * 100
-            else:
-                score = 100
-
-            community_scores.append(score)
-
-        total_score = 0
-        for i, score in enumerate(community_scores):
-            total_score += score
-
-        self.weighted_homogeneity = total_score / len(community_scores)
-
-    def calc_normalized_mutual_information(self):
-        """
-        Calculate normalized mutual information score between true and
-        predicted labels using the 'normalized_mutual_info_score' function
-        from scikit-learn.
-        NMI used to measure similarity between two sets of labels, ground
-        truth labels (true labels) and the community detection results
-        (predicted labels).
-        Normalized to [0,1]:
-        0 -> no mutual information (completely different labels)
-        1 -> indicates perfect match between label sets
-        """
-        self.nmi = normalized_mutual_info_score(
+        self.completeness = completeness_score(
             self.true_labels, self.predicted_labels
         )
 
@@ -214,6 +157,21 @@ class Scores:
             score=size_score,
         )
 
+    def calc_modularity(self):
+        """
+        Calculate the modularity score for the current partition of the graph
+        using networkx 'modularity' function. Evaluates the partition of the
+        graph into communities by analyzing inter- and intra-community edges.
+        1 -> many intra-community edges, but sparse inter, resulting in good
+             community structures
+        0 -> few intra-community, but many inter-community edges
+        """
+        self.modularity = modularity(self.graph, self.partition)
+
+    """
+    CLUSTERING METRICS
+    """
+
     def calc_adjusted_rand_index(self):
         """
         Calculate the adjusted rand index score between the true and predicted
@@ -228,64 +186,53 @@ class Scores:
         """
         self.ari = adjusted_rand_score(self.true_labels, self.predicted_labels)
 
-    def calc_f1_score(self):
+    def calc_normalized_mutual_information(self):
         """
-        Calculate the weighted F1 score between the true and predicted labels
-        using the 'f1_score' function from scikit-learn. Can be interpreted as
-        a harmonic mean of the precision and recall, where an F1 score reaches
-        its best value at 1 and worst score at 0.
-
-        TODO: check wie sinnvoll? original_score 0.21, warum?
+        Calculate normalized mutual information score between true and
+        predicted labels using the 'normalized_mutual_info_score' function
+        from scikit-learn.
+        NMI used to measure similarity between two sets of labels, ground
+        truth labels (true labels) and the community detection results
+        (predicted labels).
+        Normalized to [0,1]:
+        0 -> no mutual information (completely different labels)
+        1 -> indicates perfect match between label sets
         """
-        self.f1 = f1_score(
-            self.true_labels, self.predicted_labels, average="weighted"
+        self.nmi = normalized_mutual_info_score(
+            self.true_labels, self.predicted_labels
         )
 
-    def calc_modularity(self):
+    def calc_adjusted_mutual_information(self):
         """
-        Calculate the modularity score for the current partition of the graph
-        using networkx 'modularity' function. Evaluates the partition of the
-        graph into communities by analyzing inter- and intra-community edges.
-        1 -> many intra-community edges, but sparse inter, resulting in good
-             community structures
-        0 -> few intra-community, but many inter-community edges
+        Calculate adjusted mutual information score between true and
+        predicted labels using the 'adjusted_mutual_info_score' function
+        from scikit-learn.
+        AMI used to measure similarity between two sets of labels, ground
+        truth labels (true labels) and the community detection results
+        (predicted labels).
+        Adjusted for chance -> takes into account that MI generally higher
+        for clusterings with larger number of clusters, even if not more
+        information is shared.
+        1 -> indicates perfect match between label sets
+        0 -> indicates random labeling
+        negative values -> indicate worse-than-random labeling
         """
-        self.modularity = modularity(self.graph, self.partition)
-
-    def calc_conductance(self):
-        """
-        Calculate the average conductance score over all communities in the
-        graph. Measures how well community is separated from the rest of the
-        graph, with lower values indicating better-defined communities.
-        Conductance defined as ratio of number of edges that connect the
-        community to nodes outside of it (cut edges) to the smaller of the
-        total volume of the community (sum of the degrees of its nodes)
-        and the total volume of the graph minus the volume of the community.
-        """
-        conductance_scores = []
-        for community in self.partition:
-            nodes = set(community)
-            sum_degree = sum(self.graph.degree(n) for n in nodes)
-            cut_edges = nx.cut_size(self.graph, nodes)
-            denominator = min(sum_degree, 2 * len(self.graph.edges) - sum_degree)
-            conductance = cut_edges / denominator if denominator > 0 else 0
-            conductance_scores.append(conductance)
-        self.avg_conductance = np.mean(conductance_scores)
-
-    def calc_coverage(self):
-        """
-        Calculate the coverage of the graph's communities, measuring the
-        proportion of edges in the graph that are contained within the
-        identified communities. Coverage defined as the ratio of the total
-        number of edges that connect nodes within the same community
-        (intra-community edges) to the total number of edges in the graph.
-        """
-        intra_community_edges = sum(
-            nx.subgraph(self.graph, community).size()
-            for community in self.partition
+        self.ami = adjusted_mutual_info_score(
+            self.true_labels, self.predicted_labels
         )
-        total_edges = len(self.graph.edges)
-        self.coverage = intra_community_edges / total_edges
+
+    def calc_fowlkes_mallows(self):
+        """
+        Calculate the fowlkes mallows index score between the true and
+        predicted labels using the 'fowlkes_mallows_score' function from
+        scikit-learn.
+        FMI defined as geometric mean of precision & recall.
+        Score between [0,1]:
+        higher value -> good similarity between two clusters
+        """
+        self.fmi = fowlkes_mallows_score(
+            self.true_labels, self.predicted_labels
+        )
 
     def __set_labels(self):
         """
@@ -296,7 +243,7 @@ class Scores:
         partitioning).
         """
         type_to_int = {
-            type_label: i
+            type_label: type_label
             for i, type_label in enumerate(
                 set(nx.get_node_attributes(self.graph, "type").values())
             )
