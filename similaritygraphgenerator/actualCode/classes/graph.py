@@ -17,7 +17,7 @@ from networkx.algorithms.community import girvan_newman
 
 class Graph:
     # TODO: Hier später statt Compound Liste Similarity Matrix übergeben
-    def __init__(self, compounds_list):
+    def __init__(self, recipe, compounds_list):
         """
         Constructor, initializes instance of Graph class.
         Initializes options dictionary, that provides informations about the
@@ -34,13 +34,17 @@ class Graph:
         self.options = {
             "matrix": {
                 "noise": False,
+                "noise_level": False,
+                "noise_exponent": False,
                 "threshold": False,
                 "normalization": False,
             },
             "graph": {
                 "false_edges": False,
                 "edge_threshold_node_based": False,
+                "min_edges_per_node_node_based": False,
                 "edge_threshold_global": False,
+                "min_edges_per_node_global": False,
                 "edge_weight_normalization": False,
             },
             "community_detection": {
@@ -51,6 +55,7 @@ class Graph:
                 "greedy_modularity": False,
             },
         }
+        self.recipe = recipe
         self.compounds_list = compounds_list
         self.node_types = [c.compound_type for c in self.compounds_list]
 
@@ -178,6 +183,8 @@ class Graph:
         np.fill_diagonal(noisy_matrix, 0)
 
         self.options["matrix"]["noise"] = percentage_to_modify
+        self.options["matrix"]["noise_level"] = noise_level
+        self.options["matrix"]["noise_exponent"] = exponent
         self.similarity_matrix = noisy_matrix
 
     def apply_matrix_treshold(self, percentage_to_remove=20):
@@ -262,8 +269,6 @@ class Graph:
 
     def add_false_edges(self, percentage=10):
         """
-        TODO: evtl. noch mal anpassen? Machen doppelte Kanten Sinn? Sonst edge
-        weights anpassen?
         Add random non-exisitng false edges to the graph. Possible edges to add
         are edges, that are not yet in the graph. The given percentage
         determines how many edges should be added in relation to the number of
@@ -356,6 +361,9 @@ class Graph:
         self.options["graph"][
             "edge_threshold_node_based"
         ] = percentage_to_remove
+        self.options["graph"][
+            "min_edges_per_node_node_based"
+        ] = min_edges_per_node
         self.graph = graph
 
     def apply_edge_threshold_global(
@@ -398,6 +406,7 @@ class Graph:
                     break
 
         self.options["graph"]["edge_threshold_global"] = percentage_to_remove
+        self.options["graph"]["min_edges_per_node_global"] = min_edges_per_node
         self.graph = graph
 
     def apply_edge_weight_normalization(self):
@@ -509,10 +518,10 @@ class Graph:
         dictionary of subgraphs for each community.
         """
         infomap = Infomap(silent=True)
-        for edge in self.graph.edges():
-            infomap.add_link(*edge)
+        for node in self.graph.nodes():
+            infomap.add_node(node)
+        infomap.add_links(self.graph.edges())
         infomap.run()
-
         communities = {}
         for node_id, module_id in infomap.modules:
             if module_id not in communities:
@@ -935,12 +944,12 @@ class Graph:
 
         Generated string format:
         'node-count'-'original-community-count'
-        _'noise'-'threshold'-'normalization'
-        _'false-edges'-'threshold-node-based'-'threshold-global'-'weight-normalization'
+        _'noise'-'noise_level'-'noise_exponent'-'threshold'-'normalization'
+        _'false-edges'-'threshold-node-based'-'min_edges_node_based'-'threshold-global'-'min_edges_global'-'weight-normalization'
         _'girvan_newman'-'louvain'-'lpa'-'infomap'-'greedy-modularity'
 
         example output:
-        340-8_10-20-1_10-90-0-0_1-1-1-1-0
+        340-8_10-0.1-3-20-1_10-90-5-60-5-0_1-1-1-1-0
         """
         name = ""
         name += str(self.original_untouched_graph.number_of_nodes()) + "-"
@@ -1004,20 +1013,60 @@ class Graph:
                 print(score)
 
     def __add_score(self, score):
-        self.score_data.append(
+        self.data.append(
             {
                 "Name": score.name,
                 "Homogeneity": score.homogeneity,
-                "Weighted Homogeneity": score.weighted_homogeneity,
-                "NMI": score.nmi,
+                "Completeness": score.completeness,
                 "Community Size Score": score.community_size.score,
                 "Community Count": score.community_size.num_com,
                 "Avg Community Size": score.community_size.avg_com_size,
-                "ARI": score.ari,
-                "F1": score.f1,
                 "Modularity": score.modularity,
-                "Conductance": score.avg_conductance,
-                "Coverage": score.coverage,
+                "ARI": score.ari,
+                "NMI": score.nmi,
+                "AMI": score.ami,
+                "FMI": score.fmi,
+            }
+        )
+
+    def __add_options(self):
+        self.data.append(
+            {
+                "recipe": self.recipe,
+                "matrix_noise": self.options["matrix"]["noise"],
+                "matrix_noise_level": self.options["matrix"]["noise_level"],
+                "matrix_noise_exponent": self.options["matrix"][
+                    "noise_exponent"
+                ],
+                "matrix_threshold": self.options["matrix"]["threshold"],
+                "matrix_normalization": self.options["matrix"][
+                    "normalization"
+                ],
+                "false_edges": self.options["graph"]["false_edges"],
+                "edge_threshold_node_based": self.options["graph"][
+                    "edge_threshold_node_based"
+                ],
+                "min_edge_node_based": self.options["graph"][
+                    "min_edges_per_node_node_based"
+                ],
+                "edge_threshold_global": self.options["graph"][
+                    "edge_threshold_global"
+                ],
+                "min_edge_global": self.options["graph"][
+                    "min_edges_per_node_global"
+                ],
+                "edge_weight_normalization": self.options["graph"][
+                    "edge_weight_normalization"
+                ],
+                "girvan_newman": self.options["community_detection"][
+                    "girvan_newman"
+                ],
+                "louvain": self.options["community_detection"]["louvain"],
+                "lpa": self.options["community_detection"]["lpa"],
+                "infomap": self.options["community_detection"]["infomap"],
+                "greedy_modularity": self.options["community_detection"][
+                    "greedy_modularity"
+                ],
             }
         )
 
@@ -1040,16 +1089,19 @@ class Graph:
 
         nx.write_graphml(
             self.original_untouched_graph,
-            f"exports/{name_as_code}/graphml/original/untouched_graph_{name_as_code}.graphml",
+            f"exports/{name_as_code}/graphml/original/"
+            + f"untouched_graph_{name_as_code}.graphml",
         )
         nx.write_graphml(
             self.graph,
-            f"exports/{name_as_code}/graphml/original/graph_{name_as_code}.graphml",
+            f"exports/{name_as_code}/graphml/original/"
+            + f"graph_{name_as_code}.graphml",
         )
         for community_id, subgraph in self.original_subgraphs.items():
             nx.write_graphml(
                 subgraph,
-                f"exports/{name_as_code}/graphml/original/subgraph_{name_as_code}_community_{community_id}.graphml",
+                f"exports/{name_as_code}/graphml/original/"
+                + f"subgraph_{name_as_code}_community_{community_id}.graphml",
             )
 
         for option in self.options["community_detection"]:
@@ -1067,33 +1119,39 @@ class Graph:
 
                 nx.write_graphml(
                     graph,
-                    f"exports/{name_as_code}/graphml/{option}/graph_{name_as_code}.graphml",
+                    f"exports/{name_as_code}/graphml/{option}/"
+                    + f"graph_{name_as_code}.graphml",
                 )
                 nx.write_graphml(
                     partitioned_graph,
-                    f"exports/{name_as_code}/graphml/{option}/partitioned_graph_{name_as_code}.graphml",
+                    f"exports/{name_as_code}/graphml/{option}/"
+                    + f"partitioned_graph_{name_as_code}.graphml",
                 )
                 nx.write_graphml(
                     weight_adjusted_graph,
-                    f"exports/{name_as_code}/graphml/{option}/weight_adjusted_graph_{name_as_code}.graphml",
+                    f"exports/{name_as_code}/graphml/{option}/"
+                    + f"weight_adjusted_graph_{name_as_code}.graphml",
                 )
                 for community_id, subgraph in subgraphs.items():
                     nx.write_graphml(
                         subgraph,
-                        f"exports/{name_as_code}/graphml/{option}/subgraph_{name_as_code}_community_{community_id}.graphml",
+                        f"exports/{name_as_code}/graphml/{option}/"
+                        + f"subgraph_{name_as_code}_community_{community_id}"
+                        + ".graphml",
                     )
 
-    def export_scores_to_csv(self):
+    def export_to_csv(self):
         """
-        Export calculated scores for the original graph and partition,
-        as well as the scores for all community detection algorithms applied to
-        the graph, into a CSV file.
+        Export the options and calculated scores for the original
+        graph and partition, as well as the scores for all community
+        detection algorithms applied to the graph, into a CSV file.
         """
         name_as_code = self.__get_name_as_code()
-        filename = name_as_code + ".csv"
+        scores_filename = name_as_code + ".csv"
         base_dir = os.path.join(f"exports/{name_as_code}/csv")
 
-        self.score_data = []
+        self.data = []
+        self.__add_options()
         self.__add_score(self.original_score)
 
         for option in self.options["community_detection"]:
@@ -1102,13 +1160,13 @@ class Graph:
                 self.__add_score(score)
 
         os.makedirs(base_dir, exist_ok=True)
-        df = pd.DataFrame(self.score_data)
-        file_path = os.path.join(base_dir, filename)
-        df.to_csv(file_path, index=False)
+        df = pd.DataFrame(self.data)
+        scores_file_path = os.path.join(base_dir, scores_filename)
+        df.to_csv(scores_file_path, index=False)
 
     def export_all_images(self):
         """
-        save all images to the export folder. Includes histogram for similarity
+        Save all images to the export folder. Includes histogram for similarity
         matrix, all generated graphs and subraphs.
         """
         self.visualize_similarities_histogram(show=False, save=True)
