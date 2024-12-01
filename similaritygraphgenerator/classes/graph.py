@@ -122,6 +122,8 @@ class Graph:
                 )
         np.fill_diagonal(similarities, 0.0)
         self.similarity_matrix = similarities
+        if not hasattr(self, 'original_similarity_matrix'):
+            self.original_similarity_matrix = copy.deepcopy(similarities)
 
     def __overlap_fraction(self, seq1, seq2):
         """
@@ -715,7 +717,7 @@ class Graph:
     VISUALIZATION
     """
 
-    def visualize_similarities_histogram(self, show=True, save=False):
+    def visualize_similarities_histogram(self, similarity_matrix, show=True, save=False, name="histogram.png"):
         """
         Visualize a histogram of the values in the similarity matrix. Zero
         values are not displayed.
@@ -723,18 +725,14 @@ class Graph:
             show (bool):   Histogram will be shown if True.
             save (bool):   Histogram will be saved as png if True.
         """
-        similarities_flat = self.similarity_matrix[
-            self.similarity_matrix != 0
+        similarities_flat = similarity_matrix[
+            similarity_matrix != 0
         ].flatten()
         plt.hist(similarities_flat, bins=50, rwidth=0.8)
-        if self.options["matrix"]["threshold"]:
-            name = "/histogram_after_threshold.png"
-        else:
-            name = "/histogram.png"
-
+        
         if save:
             name_as_code = self.__get_name_as_code()
-            base_dir = os.path.join(f"exports/{name_as_code}/images")
+            base_dir = os.path.join(f"exports/{name_as_code}/images/")
             os.makedirs(base_dir, exist_ok=True)
             plt.savefig(base_dir + name, dpi=100)
         if show:
@@ -1181,7 +1179,8 @@ class Graph:
         matrix, all generated graphs and subraphs.
         """
         if export_histogram:
-            self.visualize_similarities_histogram(show=False, save=True)
+            self.visualize_similarities_histogram(similarity_matrix=self.similarity_matrix, show=False, save=True)
+            self.visualize_similarities_histogram(similarity_matrix=self.original_similarity_matrix, show=False, save=True, name="original-histogram.png")
         if export_graph:
             self.visualize_graph(
                 self.original_untouched_graph,
