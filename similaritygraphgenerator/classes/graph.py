@@ -1169,7 +1169,13 @@ class Graph:
         scores_file_path = os.path.join(base_dir, scores_filename)
         df.to_csv(scores_file_path, index=False)
 
-    def export_all_images(self, export_histogram=True, export_graph=True, export_partition=True, export_cd=True):
+    def export_all_images(
+        self,
+        export_histogram=True,
+        export_graph=True,
+        export_partition=True,
+        export_cd=True,
+    ):
         """
         Save all images to the export folder. Includes histogram for similarity
         matrix, all generated graphs and subraphs.
