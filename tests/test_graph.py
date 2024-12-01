@@ -206,9 +206,11 @@ def apply_greedy_modularity(modified_graph):
 
 
 def test_visualize_similarities_histogram_save(modified_graph):
-    with mock.patch("matplotlib.pyplot.savefig") as mock_save, mock.patch(
-        "os.makedirs"
-    ) as mock_makedirs, mock.patch("matplotlib.pyplot.show") as mock_show:
+    with (
+        mock.patch("matplotlib.pyplot.savefig") as mock_save,
+        mock.patch("os.makedirs") as mock_makedirs,
+        mock.patch("matplotlib.pyplot.show") as mock_show,
+    ):
         modified_graph.visualize_similarities_histogram(
             modified_graph.similarity_matrix, show=False, save=True
         )
@@ -222,9 +224,11 @@ def test_visualize_similarities_histogram_save(modified_graph):
 
 
 def test_visualize_similarities_histogram_show(modified_graph):
-    with mock.patch("matplotlib.pyplot.savefig") as mock_save, mock.patch(
-        "os.makedirs"
-    ) as mock_makedirs, mock.patch("matplotlib.pyplot.show") as mock_show:
+    with (
+        mock.patch("matplotlib.pyplot.savefig") as mock_save,
+        mock.patch("os.makedirs") as mock_makedirs,
+        mock.patch("matplotlib.pyplot.show") as mock_show,
+    ):
         modified_graph.visualize_similarities_histogram(
             modified_graph.similarity_matrix, show=True, save=False
         )
@@ -234,9 +238,11 @@ def test_visualize_similarities_histogram_show(modified_graph):
 
 
 def test_visualize_graph_save(modified_graph):
-    with mock.patch("matplotlib.pyplot.savefig") as mock_save, mock.patch(
-        "os.makedirs"
-    ) as mock_makedirs, mock.patch("matplotlib.pyplot.show") as mock_show:
+    with (
+        mock.patch("matplotlib.pyplot.savefig") as mock_save,
+        mock.patch("os.makedirs") as mock_makedirs,
+        mock.patch("matplotlib.pyplot.show") as mock_show,
+    ):
         modified_graph.create_graph()
         modified_graph.visualize_graph(
             modified_graph.graph, show=False, save=True, title="test"
@@ -251,9 +257,11 @@ def test_visualize_graph_save(modified_graph):
 
 
 def test_visualize_graph_show(modified_graph):
-    with mock.patch("matplotlib.pyplot.savefig") as mock_save, mock.patch(
-        "os.makedirs"
-    ) as mock_makedirs, mock.patch("matplotlib.pyplot.show") as mock_show:
+    with (
+        mock.patch("matplotlib.pyplot.savefig") as mock_save,
+        mock.patch("os.makedirs") as mock_makedirs,
+        mock.patch("matplotlib.pyplot.show") as mock_show,
+    ):
         modified_graph.create_graph()
         modified_graph.visualize_graph(
             modified_graph.graph, show=True, save=False
@@ -264,9 +272,11 @@ def test_visualize_graph_show(modified_graph):
 
 
 def test_visualize_partition_save(modified_graph):
-    with mock.patch("matplotlib.pyplot.savefig") as mock_save, mock.patch(
-        "os.makedirs"
-    ) as mock_makedirs, mock.patch("matplotlib.pyplot.show") as mock_show:
+    with (
+        mock.patch("matplotlib.pyplot.savefig") as mock_save,
+        mock.patch("os.makedirs") as mock_makedirs,
+        mock.patch("matplotlib.pyplot.show") as mock_show,
+    ):
         modified_graph.create_graph()
         modified_graph.visualize_partition(
             modified_graph.original_subgraphs,
@@ -284,9 +294,11 @@ def test_visualize_partition_save(modified_graph):
 
 
 def test_visualize_partition_show(modified_graph):
-    with mock.patch("matplotlib.pyplot.savefig") as mock_save, mock.patch(
-        "os.makedirs"
-    ) as mock_makedirs, mock.patch("matplotlib.pyplot.show") as mock_show:
+    with (
+        mock.patch("matplotlib.pyplot.savefig") as mock_save,
+        mock.patch("os.makedirs") as mock_makedirs,
+        mock.patch("matplotlib.pyplot.show") as mock_show,
+    ):
         modified_graph.create_graph()
         modified_graph.visualize_partition(
             modified_graph.original_subgraphs, show=True, save=False
