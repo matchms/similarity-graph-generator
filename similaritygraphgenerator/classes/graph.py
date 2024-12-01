@@ -727,11 +727,16 @@ class Graph:
             self.similarity_matrix != 0
         ].flatten()
         plt.hist(similarities_flat, bins=50, rwidth=0.8)
+        if self.options["matrix"]["threshold"]:
+            name = "/histogram_after_threshold.png"
+        else:
+            name = "/histogram.png"
+
         if save:
             name_as_code = self.__get_name_as_code()
             base_dir = os.path.join(f"exports/{name_as_code}/images")
             os.makedirs(base_dir, exist_ok=True)
-            plt.savefig(base_dir + "/histogram.png", dpi=100)
+            plt.savefig(base_dir + name, dpi=100)
         if show:
             plt.show()
         plt.clf()
@@ -1164,55 +1169,58 @@ class Graph:
         scores_file_path = os.path.join(base_dir, scores_filename)
         df.to_csv(scores_file_path, index=False)
 
-    def export_all_images(self):
+    def export_all_images(self, export_histogram=True, export_graph=True, export_partition=True, export_cd=True):
         """
         Save all images to the export folder. Includes histogram for similarity
         matrix, all generated graphs and subraphs.
         """
-        self.visualize_similarities_histogram(show=False, save=True)
-        self.visualize_graph(
-            self.original_untouched_graph,
-            "original_untouched_graph",
-            show=False,
-            save=True,
-        )
-        self.visualize_graph(self.graph, "graph", show=False, save=True)
-        self.visualize_partition(
-            self.original_subgraphs,
-            title="original_subgraphs",
-            show=False,
-            save=True,
-        )
+        if export_histogram:
+            self.visualize_similarities_histogram(show=False, save=True)
+        if export_graph:
+            self.visualize_graph(
+                self.original_untouched_graph,
+                "original_untouched_graph",
+                show=False,
+                save=True,
+            )
+            self.visualize_graph(self.graph, "graph", show=False, save=True)
+        if export_partition:
+            self.visualize_partition(
+                self.original_subgraphs,
+                title="original_subgraphs",
+                show=False,
+                save=True,
+            )
+        if export_cd:
+            for option in self.options["community_detection"]:
+                if self.options["community_detection"].get(option):
+                    graph = getattr(self, f"{option}_graph", None)
+                    partitioned_graph = getattr(
+                        self, f"{option}_partitioned_graph", None
+                    )
+                    weight_adjusted_graph = getattr(
+                        self, f"{option}_weight_adjusted_graph", None
+                    )
+                    subgraphs = getattr(self, f"{option}_subgraphs", None)
 
-        for option in self.options["community_detection"]:
-            if self.options["community_detection"].get(option):
-                graph = getattr(self, f"{option}_graph", None)
-                partitioned_graph = getattr(
-                    self, f"{option}_partitioned_graph", None
-                )
-                weight_adjusted_graph = getattr(
-                    self, f"{option}_weight_adjusted_graph", None
-                )
-                subgraphs = getattr(self, f"{option}_subgraphs", None)
-
-                self.visualize_graph(
-                    graph, title=f"{option}_graph", show=False, save=True
-                )
-                self.visualize_graph(
-                    partitioned_graph,
-                    title=f"{option}_partitioned",
-                    show=False,
-                    save=True,
-                )
-                self.visualize_graph(
-                    weight_adjusted_graph,
-                    title=f"{option}_weight_adjusted_graph",
-                    show=False,
-                    save=True,
-                )
-                self.visualize_partition(
-                    subgraphs,
-                    title=f"{option}_subgraphs",
-                    show=False,
-                    save=True,
-                )
+                    self.visualize_graph(
+                        graph, title=f"{option}_graph", show=False, save=True
+                    )
+                    self.visualize_graph(
+                        partitioned_graph,
+                        title=f"{option}_partitioned",
+                        show=False,
+                        save=True,
+                    )
+                    self.visualize_graph(
+                        weight_adjusted_graph,
+                        title=f"{option}_weight_adjusted_graph",
+                        show=False,
+                        save=True,
+                    )
+                    self.visualize_partition(
+                        subgraphs,
+                        title=f"{option}_subgraphs",
+                        show=False,
+                        save=True,
+                    )
