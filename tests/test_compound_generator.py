@@ -16,7 +16,7 @@ from similaritygraphgenerator.data.compound_data import (
 
 @pytest.fixture
 def some_recipe():
-    test = [
+    recipe = [
         (1, type_rules1),
         (1, type_rules2),
         (1, type_rules3),
@@ -26,7 +26,7 @@ def some_recipe():
         (1, type_rules7),
         (1, type_rules8),
     ]
-    return test
+    return recipe
 
 
 def test_generate_compound(some_recipe):

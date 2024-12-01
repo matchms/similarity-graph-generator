@@ -8,11 +8,11 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import textdistance
-from classes.scores import Scores
-from data.color_data import colors
 from infomap import Infomap
 from matplotlib import pyplot as plt
 from networkx.algorithms.community import girvan_newman
+from similaritygraphgenerator.classes.scores import Scores
+from similaritygraphgenerator.data.color_data import colors
 
 
 class Graph:
