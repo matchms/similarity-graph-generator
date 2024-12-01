@@ -44,4 +44,5 @@ coverage.xml
 .settings
 
 exports
+logs
 .DS_Store
