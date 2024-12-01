@@ -29,7 +29,8 @@ dependencies = [
     "pandas",
     "textdistance",
     "infomap",
-    "matplotlib"
+    "matplotlib",
+    "sklearn"
 ]
 description = "Generation and processing of a graph from pairwise similarity measures."
 license = {file = "LICENSE"}
