@@ -23,7 +23,14 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "numpy"
+    "numpy",
+    "community",
+    "networkx",
+    "pandas",
+    "textdistance",
+    "infomap",
+    "matplotlib",
+    "networkx.algorithms.community"
 ]
 description = "Generation and processing of a graph from pairwise similarity measures."
 license = {file = "LICENSE"}
