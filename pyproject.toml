@@ -30,7 +30,7 @@ dependencies = [
     "textdistance",
     "infomap",
     "matplotlib",
-    "sklearn"
+    "scikit-learn"
 ]
 description = "Generation and processing of a graph from pairwise similarity measures."
 license = {file = "LICENSE"}
