@@ -22,7 +22,9 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-dependencies = []
+dependencies = [
+    "numpy"
+]
 description = "Generation and processing of a graph from pairwise similarity measures."
 license = {file = "LICENSE"}
 name = "similarity_graph_generator"
