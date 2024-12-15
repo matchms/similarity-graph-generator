@@ -4,6 +4,7 @@ import re
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+import numpy as np
 
 
 class Plots:
@@ -38,6 +39,9 @@ class Plots:
             self.plot_heatmap(
                 base_folder, x_axis, y_axis, data_point_values, algorithm, save
             )
+            pass
+        if plot_type == "confidence":
+            self.plot_confidence(base_folder, x_axis, y_axis, save)
             pass
 
     def get_heatmap_data(
@@ -130,26 +134,37 @@ class Plots:
 
         data_gn_df = pd.DataFrame(
             {f"{x_axis}": x_values, f"{y_axis}": data_gn}
-        )
+        ).sort_values(by=f"{x_axis}")
         data_louvain_df = pd.DataFrame(
             {f"{x_axis}": x_values, f"{y_axis}": data_louvain}
-        )
+        ).sort_values(by=f"{x_axis}")
         data_lpa_df = pd.DataFrame(
             {f"{x_axis}": x_values, f"{y_axis}": data_lpa}
-        )
+        ).sort_values(by=f"{x_axis}")
         data_infomap_df = pd.DataFrame(
             {f"{x_axis}": x_values, f"{y_axis}": data_infomap}
-        )
+        ).sort_values(by=f"{x_axis}")
         data_gm_df = pd.DataFrame(
             {f"{x_axis}": x_values, f"{y_axis}": data_gm}
-        )
+        ).sort_values(by=f"{x_axis}")
 
+        data = pd.DataFrame({
+        f"{x_axis}": x_values, 
+        "LPA":  data_lpa,
+        "Infomap":data_infomap ,
+        "GM":  data_gm,
+        "Louvain": data_louvain,
+        "GN": data_gn})
+        
+        test_df = pd.melt(data, [f"{x_axis}"])
+        
         return (
             data_gn_df,
             data_louvain_df,
             data_lpa_df,
             data_infomap_df,
             data_gm_df,
+            test_df
         )
 
     def plot_heatmap(
@@ -159,7 +174,7 @@ class Plots:
             base_folder, x_axis, y_axis, data_point_values, algorithm
         )
         plt.figure(figsize=(20, 20))
-        sns.heatmap(heatmap_data, annot=True, fmt=".2f", linewidth=0.5)
+        sns.heatmap(heatmap_data, annot=True, fmt=".2f", linewidth=0.5, vmin=0, vmax=1)
 
         # plt.contourf(heatmap_data.columns, heatmap_data.index, heatmap_data.values, 20, cmap="viridis", alpha=0.6)
         # plt.colorbar(label=data_point_values)
@@ -186,7 +201,7 @@ class Plots:
         plt.show()
         plt.clf()
 
-    def plot_line_chart(self, base_folder, x_axis, y_axis, save):
+    def old_plot_line_chart(self, base_folder, x_axis, y_axis, save):
         (
             data_gn,
             data_louvain,
@@ -201,42 +216,112 @@ class Plots:
         data_infomap = data_infomap.sort_values(by=f"{x_axis}")
         data_gm = data_gm.sort_values(by=f"{x_axis}")
 
-        plt.figure(figsize=(10, 6))
 
+        fig, ax = plt.subplots(1, 1, figsize=(15, 10))
         plt.plot(
             data_gn[f"{x_axis}"],
             data_gn[f"{y_axis}"],
+            "ro--",
             label="Girvan Newman",
-            color="blue",
         )
         plt.plot(
             data_louvain[f"{x_axis}"],
             data_louvain[f"{y_axis}"],
+            "ko--",
             label="Louvain",
-            color="black",
         )
         plt.plot(
             data_lpa[f"{x_axis}"],
             data_lpa[f"{y_axis}"],
+            "co--",
             label="LPA",
-            color="green",
         )
         plt.plot(
             data_infomap[f"{x_axis}"],
             data_infomap[f"{y_axis}"],
+            "go--",
             label="Infomap",
-            color="gray",
         )
         plt.plot(
             data_gm[f"{x_axis}"],
             data_gm[f"{y_axis}"],
+            "mo--",
             label="Greedy Modularity",
-            color="pink",
         )
 
+
+        ax.set(xlim=(0,100), ylim=(0,1))
+        ax.set_yticks(np.arange(0, 1, 1/10))
+        ax.set_yticks(np.arange(0, 1, 1/50), minor=True)
+        ax.set_xticks(np.arange(0, 100, 100/10))
         plt.xlabel(f"{x_axis}")
         plt.ylabel(f"{y_axis}")
-        plt.title(f"Devolopment of {y_axis} over {x_axis}")
+        plt.legend()
+        plt.grid(True)
+
+        if save:
+            base_dir = os.path.join("exports/plots/")
+            filename = (
+                base_dir + f"line-chart-{y_axis}-over-{x_axis}-{self.name}.png"
+            )
+            os.makedirs(base_dir, exist_ok=True)
+            plt.savefig(filename, dpi=300)
+        plt.show()
+        plt.clf()
+
+    def plot_line_chart(self, base_folder, x_axis, y_axis, save):
+        (
+            data_gn,
+            data_louvain,
+            data_lpa,
+            data_infomap,
+            data_gm,
+            test
+        ) = self.get_line_chart_data(base_folder, x_axis, y_axis)
+
+        fig, ax = plt.subplots(1, 1, figsize=(15, 10))
+
+        sns.lineplot(data=test, x=x_axis, y='value', hue='variable', style="variable", markers=True, dashes=True)
+
+        ax.set(xlim=(0,100), ylim=(0,1))
+        ax.set_yticks(np.arange(0, 1, 1/10))
+        ax.set_yticks(np.arange(0, 1, 1/50), minor=True)
+        ax.set_xticks(np.arange(0, 100, 100/10))
+        plt.xlabel(f"{x_axis}")
+        plt.ylabel(f"{y_axis}")
+        plt.legend()
+        plt.grid(True)
+
+        if save:
+            base_dir = os.path.join("exports/plots/")
+            filename = (
+                base_dir + f"line-chart-{y_axis}-over-{x_axis}-{self.name}.png"
+            )
+            os.makedirs(base_dir, exist_ok=True)
+            plt.savefig(filename, dpi=300)
+        plt.show()
+        plt.clf()
+
+    def plot_confidence(self, base_folder, x_axis, y_axis, save):
+        (
+            data_gn,
+            data_louvain,
+            data_lpa,
+            data_infomap,
+            data_gm,
+            test
+        ) = self.get_line_chart_data(base_folder, x_axis, y_axis)
+
+        fig, ax = plt.subplots(1, 1, figsize=(15, 10))
+
+        sns.lineplot(data=test, x=x_axis, y='value')
+
+        ax.set(xlim=(0,100), ylim=(0,1))
+        ax.set_yticks(np.arange(0, 1, 1/10))
+        ax.set_yticks(np.arange(0, 1, 1/50), minor=True)
+        ax.set_xticks(np.arange(0, 100, 100/10))
+        plt.xlabel(f"{x_axis}")
+        plt.ylabel(f"{y_axis}")
         plt.legend()
         plt.grid(True)
 
