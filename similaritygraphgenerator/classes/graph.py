@@ -721,7 +721,7 @@ class Graph:
     """
 
     def visualize_similarities_histogram(
-        self, similarity_matrix, show=True, save=False, name="histogram.png"
+        self, similarity_matrix, folder_name=None, show=True, save=False, name="histogram.png"
     ):
         """
         Visualize a histogram of the values in the similarity matrix. Zero
@@ -735,7 +735,10 @@ class Graph:
 
         if save:
             name_as_code = self.__get_name_as_code()
-            base_dir = os.path.join(f"exports/{name_as_code}/images/")
+            if folder_name:
+                base_dir = os.path.join(f"exports/{folder_name}/{name_as_code}/images/")
+            else:
+                base_dir = os.path.join(f"exports/{name_as_code}/images/")
             os.makedirs(base_dir, exist_ok=True)
             plt.savefig(base_dir + name, dpi=100)
         if show:
@@ -1146,7 +1149,7 @@ class Graph:
                         + ".graphml",
                     )
 
-    def export_to_csv(self):
+    def export_to_csv(self, folder_name=None):
         """
         Export the options and calculated scores for the original
         graph and partition, as well as the scores for all community
@@ -1154,7 +1157,10 @@ class Graph:
         """
         name_as_code = self.__get_name_as_code()
         scores_filename = name_as_code + ".csv"
-        base_dir = os.path.join(f"exports/{name_as_code}/csv")
+        if folder_name:
+            base_dir = os.path.join(f"exports/{folder_name}/{name_as_code}/csv")
+        else:
+            base_dir = os.path.join(f"exports/{name_as_code}/csv")
 
         self.data = []
         self.__add_options()
@@ -1172,6 +1178,7 @@ class Graph:
 
     def export_all_images(
         self,
+        folder_name=None,
         export_histogram=True,
         export_graph=True,
         export_partition=True,
@@ -1183,10 +1190,10 @@ class Graph:
         """
         if export_histogram:
             self.visualize_similarities_histogram(
-                similarity_matrix=self.similarity_matrix, show=False, save=True
+                folder_name=folder_name,similarity_matrix=self.similarity_matrix, show=False, save=True
             )
             self.visualize_similarities_histogram(
-                similarity_matrix=self.original_similarity_matrix,
+                folder_name=folder_name, similarity_matrix=self.original_similarity_matrix,
                 show=False,
                 save=True,
                 name="original-histogram.png",

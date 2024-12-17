@@ -76,7 +76,7 @@ class Plots:
         )
 
         heatmap_data = data_frame.pivot(
-            index=f"{x_axis}", columns=f"{y_axis}", values=f"{data_points}"
+            index=f"{y_axis}", columns=f"{x_axis}", values=f"{data_points}"
         )
         heatmap_data = heatmap_data.fillna(0)
 
@@ -158,7 +158,7 @@ class Plots:
         heatmap_data = self.get_heatmap_data(
             base_folder, x_axis, y_axis, data_point_values, algorithm
         )
-        plt.figure(figsize=(20, 20))
+        plt.figure(figsize=(20, 5))
         sns.heatmap(heatmap_data, annot=True, fmt=".2f", linewidth=0.5)
 
         # plt.contourf(heatmap_data.columns, heatmap_data.index, heatmap_data.values, 20, cmap="viridis", alpha=0.6)
@@ -175,7 +175,7 @@ class Plots:
         plt.tight_layout()
 
         if save:
-            base_dir = os.path.join("exports/plots/")
+            base_dir = os.path.join(f"exports/{base_folder}/plots/")
             filename = (
                 base_dir
                 + f"heatmap-{data_point_values}-with-{x_axis}-and-{y_axis}"
@@ -206,34 +206,35 @@ class Plots:
         plt.plot(
             data_gn[f"{x_axis}"],
             data_gn[f"{y_axis}"],
+            "ro--",
             label="Girvan Newman",
-            color="blue",
         )
         plt.plot(
             data_louvain[f"{x_axis}"],
             data_louvain[f"{y_axis}"],
+            "go--",
             label="Louvain",
-            color="black",
         )
         plt.plot(
             data_lpa[f"{x_axis}"],
             data_lpa[f"{y_axis}"],
+            "co--",
             label="LPA",
-            color="green",
         )
         plt.plot(
             data_infomap[f"{x_axis}"],
             data_infomap[f"{y_axis}"],
+            "go--",
             label="Infomap",
-            color="gray",
         )
         plt.plot(
             data_gm[f"{x_axis}"],
             data_gm[f"{y_axis}"],
+            "mo--",
             label="Greedy Modularity",
-            color="pink",
         )
 
+        plt.axis.set(xlim=(0, 100), ylim=(0, 1))
         plt.xlabel(f"{x_axis}")
         plt.ylabel(f"{y_axis}")
         plt.title(f"Devolopment of {y_axis} over {x_axis}")
@@ -241,7 +242,7 @@ class Plots:
         plt.grid(True)
 
         if save:
-            base_dir = os.path.join("exports/plots/")
+            base_dir = os.path.join(f"exports/{base_folder}/plots/")
             filename = (
                 base_dir + f"line-chart-{y_axis}-over-{x_axis}-{self.name}.png"
             )
