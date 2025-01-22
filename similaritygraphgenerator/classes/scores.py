@@ -67,14 +67,12 @@ class Scores:
         """
         result = (
             f"+++ SCORES FOR {self.name.upper()} +++\n"
-            f"+++ Quality metrics +++\n"
             f"Homogeneity: {self.homogeneity:.2f}\n"
             f"Completeness: {self.completeness:.2f}\n"
             f"Community Size: {self.community_size.score:.2f} with "
             f"{self.community_size.num_com:.2f} communities and "
             f"{self.community_size.avg_com_size:.2f} avg community size\n"
             f"Modularity: {self.modularity:.2f}\n"
-            f"+++ Clustering metrics +++\n"
             f"Adjusted Rand Index: {self.ari:.2f}\n"
             f"Normalized Mutual Information: {self.nmi:.2f}\n"
             f"Adjusted Mutual Information: {self.ami:.2f}\n"
@@ -100,10 +98,6 @@ class Scores:
         self.calc_adjusted_mutual_information()
         self.calc_fowlkes_mallows()
         return self
-
-    """
-    QUALITY METRICS
-    """
 
     def calc_homogeneity(self):
         """
@@ -167,10 +161,6 @@ class Scores:
         0 -> few intra-community, but many inter-community edges
         """
         self.modularity = modularity(self.graph, self.partition)
-
-    """
-    CLUSTERING METRICS
-    """
 
     def calc_adjusted_rand_index(self):
         """

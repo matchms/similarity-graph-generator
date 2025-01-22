@@ -2,9 +2,9 @@ import os
 import re
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import numpy as np
 
 
 class Plots:
@@ -13,6 +13,7 @@ class Plots:
 
     def generate_regex(self, name):
         pattern_str = re.escape(name)
+        pattern_str = pattern_str.replace(r"\#", r"(\d+|\d\.\d)")
         pattern_str = pattern_str.replace(r"\?", r"\d+")
         pattern_str = f".*{pattern_str}"
         pattern_str = f"{pattern_str}.csv"
@@ -41,7 +42,7 @@ class Plots:
             )
             pass
         if plot_type == "confidence":
-            self.plot_confidence(base_folder, x_axis, y_axis, save)
+            self.plot_confidence(base_folder, algorithm, x_axis, y_axis, save)
             pass
 
     def get_heatmap_data(
@@ -68,7 +69,7 @@ class Plots:
 
             if x is not None and y is not None and data is not None:
                 x_values.append(x)
-                y_values.append(y)
+                y_values.append(0) if not y else y_values.append(y)
                 data_point_values.append(data)
 
         data_frame = pd.DataFrame(
@@ -132,40 +133,72 @@ class Plots:
             data_infomap.append(y_infomap)
             data_gm.append(y_gm)
 
-        data_gn_df = pd.DataFrame(
-            {f"{x_axis}": x_values, f"{y_axis}": data_gn}
-        ).sort_values(by=f"{x_axis}")
-        data_louvain_df = pd.DataFrame(
-            {f"{x_axis}": x_values, f"{y_axis}": data_louvain}
-        ).sort_values(by=f"{x_axis}")
-        data_lpa_df = pd.DataFrame(
-            {f"{x_axis}": x_values, f"{y_axis}": data_lpa}
-        ).sort_values(by=f"{x_axis}")
-        data_infomap_df = pd.DataFrame(
-            {f"{x_axis}": x_values, f"{y_axis}": data_infomap}
-        ).sort_values(by=f"{x_axis}")
-        data_gm_df = pd.DataFrame(
-            {f"{x_axis}": x_values, f"{y_axis}": data_gm}
-        ).sort_values(by=f"{x_axis}")
+        if all(x is None for x in data_gn):
+            data = pd.DataFrame(
+                {
+                    f"{x_axis}": x_values,
+                    "LPA": data_lpa,
+                    "Infomap": data_infomap,
+                    "GM": data_gm,
+                    "Louvain": data_louvain,
+                }
+            )
+        else:
+            data = pd.DataFrame(
+                {
+                    f"{x_axis}": x_values,
+                    "LPA": data_lpa,
+                    "Infomap": data_infomap,
+                    "GM": data_gm,
+                    "Louvain": data_louvain,
+                    "GN": data_gn,
+                }
+            )
 
-        data = pd.DataFrame({
-        f"{x_axis}": x_values, 
-        "LPA":  data_lpa,
-        "Infomap":data_infomap ,
-        "GM":  data_gm,
-        "Louvain": data_louvain,
-        "GN": data_gn})
-        
-        test_df = pd.melt(data, [f"{x_axis}"])
-        
-        return (
-            data_gn_df,
-            data_louvain_df,
-            data_lpa_df,
-            data_infomap_df,
-            data_gm_df,
-            test_df
-        )
+        consolidated_df = pd.melt(data, [f"{x_axis}"])
+
+        return consolidated_df
+
+    def get_confidence_chart_data(
+        self, base_folder, algorithm, x_axis, y_axis
+    ):
+        data = []
+
+        for run_folder in range(0, 25, 1):
+            folder_regex = re.compile(f"^{run_folder}Type.*$")
+            for root, dirs, files in os.walk(base_folder):
+                for dir in dirs:
+                    if folder_regex.match(dir):
+                        target_folder = os.path.join(root, dir)
+                        for sub_root, sub_dirs, sub_files in os.walk(
+                            target_folder
+                        ):
+                            for file in sub_files:
+                                if self.name_pattern.match(file):
+                                    csv_path = os.path.join(sub_root, file)
+                                    df = pd.read_csv(csv_path)
+
+                                    x = df[f"{x_axis}"][0]
+                                    algorithm_row = df[df["Name"] == algorithm]
+
+                                    if not algorithm_row.empty:
+                                        y = algorithm_row[f"{y_axis}"].values[
+                                            0
+                                        ]
+                                        data.append(
+                                            {
+                                                "run": run_folder,
+                                                f"{x_axis}": x,
+                                                f"{y_axis}": y,
+                                            }
+                                        )
+
+        consolidated_df = pd.DataFrame(data)
+        consolidated_df = consolidated_df.sort_values(
+            by=["run", f"{x_axis}"]
+        ).reset_index(drop=True)
+
+        return consolidated_df
 
     def plot_heatmap(
         self, base_folder, x_axis, y_axis, data_point_values, algorithm, save
@@ -174,10 +207,9 @@ class Plots:
             base_folder, x_axis, y_axis, data_point_values, algorithm
         )
         plt.figure(figsize=(20, 5))
-        sns.heatmap(heatmap_data, annot=True, fmt=".2f", linewidth=0.5, vmin=0, vmax=1)
-
-        # plt.contourf(heatmap_data.columns, heatmap_data.index, heatmap_data.values, 20, cmap="viridis", alpha=0.6)
-        # plt.colorbar(label=data_point_values)
+        sns.heatmap(
+            heatmap_data, annot=True, fmt=".2f", linewidth=0.5, vmin=0, vmax=1
+        )
 
         plt.gca().invert_yaxis()
 
@@ -198,95 +230,29 @@ class Plots:
             )
             os.makedirs(base_dir, exist_ok=True)
             plt.savefig(filename, dpi=300)
-        plt.show()
-        plt.clf()
-
-    def old_plot_line_chart(self, base_folder, x_axis, y_axis, save):
-        (
-            data_gn,
-            data_louvain,
-            data_lpa,
-            data_infomap,
-            data_gm,
-        ) = self.get_line_chart_data(base_folder, x_axis, y_axis)
-
-        data_gn = data_gn.sort_values(by=f"{x_axis}")
-        data_louvain = data_louvain.sort_values(by=f"{x_axis}")
-        data_lpa = data_lpa.sort_values(by=f"{x_axis}")
-        data_infomap = data_infomap.sort_values(by=f"{x_axis}")
-        data_gm = data_gm.sort_values(by=f"{x_axis}")
-
-
-        fig, ax = plt.subplots(1, 1, figsize=(15, 10))
-        plt.plot(
-            data_gn[f"{x_axis}"],
-            data_gn[f"{y_axis}"],
-            "ro--",
-            label="Girvan Newman",
-        )
-        plt.plot(
-            data_louvain[f"{x_axis}"],
-            data_louvain[f"{y_axis}"],
-            "ko--",
-            label="Louvain",
-        )
-        plt.plot(
-            data_lpa[f"{x_axis}"],
-            data_lpa[f"{y_axis}"],
-            "co--",
-            label="LPA",
-        )
-        plt.plot(
-            data_infomap[f"{x_axis}"],
-            data_infomap[f"{y_axis}"],
-            "go--",
-            label="Infomap",
-        )
-        plt.plot(
-            data_gm[f"{x_axis}"],
-            data_gm[f"{y_axis}"],
-            "mo--",
-            label="Greedy Modularity",
-        )
-
-
-        ax.set(xlim=(0,100), ylim=(0,1))
-        ax.set_yticks(np.arange(0, 1, 1/10))
-        ax.set_yticks(np.arange(0, 1, 1/50), minor=True)
-        ax.set_xticks(np.arange(0, 100, 100/10))
-        plt.xlabel(f"{x_axis}")
-        plt.ylabel(f"{y_axis}")
-        plt.legend()
-        plt.grid(True)
-
-        if save:
-            base_dir = os.path.join("exports/plots/")
-            filename = (
-                base_dir + f"line-chart-{y_axis}-over-{x_axis}-{self.name}.png"
-            )
-            os.makedirs(base_dir, exist_ok=True)
-            plt.savefig(filename, dpi=300)
-        plt.show()
+        else:
+            plt.show()
         plt.clf()
 
     def plot_line_chart(self, base_folder, x_axis, y_axis, save):
-        (
-            data_gn,
-            data_louvain,
-            data_lpa,
-            data_infomap,
-            data_gm,
-            test
-        ) = self.get_line_chart_data(base_folder, x_axis, y_axis)
+        (data) = self.get_line_chart_data(base_folder, x_axis, y_axis)
 
-        fig, ax = plt.subplots(1, 1, figsize=(15, 10))
+        fig, ax = plt.subplots(1, 1, figsize=(10, 5))
 
-        sns.lineplot(data=test, x=x_axis, y='value', hue='variable', style="variable", markers=True, dashes=True)
+        sns.lineplot(
+            data=data,
+            x=x_axis,
+            y="value",
+            hue="variable",
+            style="variable",
+            markers=True,
+            dashes=True,
+        )
 
-        ax.set(xlim=(0,100), ylim=(0,1))
-        ax.set_yticks(np.arange(0, 1, 1/10))
-        ax.set_yticks(np.arange(0, 1, 1/50), minor=True)
-        ax.set_xticks(np.arange(0, 100, 100/10))
+        ax.set(xlim=(0, 100), ylim=(0, 1))
+        ax.set_yticks(np.arange(0, 1, 1 / 10))
+        ax.set_yticks(np.arange(0, 1, 1 / 50), minor=True)
+        ax.set_xticks(np.arange(0, 100, 100 / 10))
         plt.xlabel(f"{x_axis}")
         plt.ylabel(f"{y_axis}")
         plt.legend()
@@ -299,27 +265,23 @@ class Plots:
             )
             os.makedirs(base_dir, exist_ok=True)
             plt.savefig(filename, dpi=300)
-        plt.show()
+        else:
+            plt.show()
         plt.clf()
 
-    def plot_confidence(self, base_folder, x_axis, y_axis, save):
-        (
-            data_gn,
-            data_louvain,
-            data_lpa,
-            data_infomap,
-            data_gm,
-            test
-        ) = self.get_line_chart_data(base_folder, x_axis, y_axis)
+    def plot_confidence(self, base_folder, algorithm, x_axis, y_axis, save):
+        (consolidated_df) = self.get_confidence_chart_data(
+            base_folder, algorithm, x_axis, y_axis
+        )
 
         fig, ax = plt.subplots(1, 1, figsize=(15, 10))
 
-        sns.lineplot(data=test, x=x_axis, y='value')
+        sns.lineplot(data=consolidated_df, x=x_axis, y=y_axis)
 
-        ax.set(xlim=(0,100), ylim=(0,1))
-        ax.set_yticks(np.arange(0, 1, 1/10))
-        ax.set_yticks(np.arange(0, 1, 1/50), minor=True)
-        ax.set_xticks(np.arange(0, 100, 100/10))
+        ax.set(xlim=(0, 100), ylim=(0, 1))
+        ax.set_yticks(np.arange(0, 1, 1 / 10))
+        ax.set_yticks(np.arange(0, 1, 1 / 50), minor=True)
+        ax.set_xticks(np.arange(0, 100, 100 / 10))
         plt.xlabel(f"{x_axis}")
         plt.ylabel(f"{y_axis}")
         plt.legend()
@@ -328,9 +290,11 @@ class Plots:
         if save:
             base_dir = os.path.join(f"exports/{base_folder}/plots/")
             filename = (
-                base_dir + f"line-chart-{y_axis}-over-{x_axis}-{self.name}.png"
+                base_dir
+                + f"confidence-{y_axis}-over-{x_axis}-algorithm-{algorithm}-{self.name}.png"
             )
             os.makedirs(base_dir, exist_ok=True)
             plt.savefig(filename, dpi=300)
-        plt.show()
+        else:
+            plt.show()
         plt.clf()

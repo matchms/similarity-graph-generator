@@ -3,24 +3,21 @@ import os
 import random
 from collections import defaultdict
 
-import community
 import networkx as nx
 import numpy as np
 import pandas as pd
-import textdistance
+from community import community_louvain
 from infomap import Infomap
 from matplotlib import pyplot as plt
 from networkx.algorithms.community import girvan_newman
-
-# from classes.scores import Scores
-# from data.color_data import colors
 from similaritygraphgenerator.classes.scores import Scores
 from similaritygraphgenerator.data.color_data import colors
 
 
 class Graph:
-    # TODO: Hier später statt Compound Liste Similarity Matrix übergeben
-    def __init__(self, recipe, compounds_list):
+    def __init__(
+        self, recipe, compounds_list, similarity_matrix, matrix_options
+    ):
         """
         Constructor, initializes instance of Graph class.
         Initializes options dictionary, that provides informations about the
@@ -36,9 +33,9 @@ class Graph:
         """
         self.options = {
             "matrix": {
-                "noise": False,
-                "noise_level": False,
-                "noise_exponent": False,
+                "noise": matrix_options["noise"],
+                "noise_level": matrix_options["noise_level"],
+                "noise_exponent": matrix_options["noise_exponent"],
                 "threshold": False,
                 "normalization": False,
             },
@@ -62,10 +59,8 @@ class Graph:
         self.compounds_list = compounds_list
         self.node_types = [c.compound_type for c in self.compounds_list]
 
-        self.__create_similarity_matrix()
-        self.original_untouched_graph = nx.from_numpy_array(
-            self.similarity_matrix
-        )
+        self.similarity_matrix = similarity_matrix
+        self.original_untouched_graph = nx.from_numpy_array(similarity_matrix)
         nx.set_node_attributes(
             self.original_untouched_graph, self.__get_compound_properties()
         )
@@ -105,92 +100,6 @@ class Graph:
     """
     MATRIX
     """
-
-    def __create_similarity_matrix(self):
-        """
-        Create similarity matrix for compounds in compounds_list.
-
-        Square matrix where each element at (i, j) represents the similarity
-        score between the sequences of the compounds c1 and c2. Each element
-        is calculated using __overlap_fraction function, which compares the
-        sequences of two compounds. The diagonal of the matrix is set to 0.0
-        to avoid self-loops later in the graph.
-        """
-        num_compounds = len(self.compounds_list)
-        similarities = np.zeros((num_compounds, num_compounds))
-        for i, c1 in enumerate(self.compounds_list):
-            for j, c2 in enumerate(self.compounds_list):
-                similarities[i, j] = self.__overlap_fraction(
-                    "".join(c1.sequence), "".join(c2.sequence)
-                )
-        np.fill_diagonal(similarities, 0.0)
-        self.similarity_matrix = similarities
-        if not hasattr(self, "original_similarity_matrix"):
-            self.original_similarity_matrix = copy.deepcopy(similarities)
-
-    def __overlap_fraction(self, seq1, seq2):
-        """
-        Calculate the similarity of two provided sequences using longest common
-        substring method. The identified overlap of both sequences is then
-        normalized to represent the similarity of the two sequences.
-
-        Args:
-            seq1 (String): The first sequence for comparison
-            seq2 (String): The second sequence for comparison
-
-        Returns:
-            similarity: Normalized similarity of the two sequences.
-                        1 indicating sequences are identical,
-                        0 indicating they have no common substring.
-        """
-        overlap = len(textdistance.lcsstr(seq1, seq2))
-        similarity = 2 * overlap / (len(seq1) + len(seq2))
-        return similarity
-
-    def add_noise_to_matrix(
-        self, percentage_to_modify=10, noise_level=0.1, exponent=3
-    ):
-        """
-        Add random noise to similarity matrix.
-
-        Args:
-            percentage_to_modify (int): Percentage of upper triangular elements
-                                        excluding the diagonal to add noise to.
-                                        Defaults to 10.
-            noise_level (float): Scaling factor for noise values.
-                                Defaults to 0.1.
-            exponent (int): Exponent to which noise values are raised. Provides
-                            more controll over noise distribution.
-                            Defaults to 3.
-        """
-        upper_tri_indices = np.triu_indices_from(self.similarity_matrix, k=1)
-        total_elements = upper_tri_indices[0].size
-        num_to_modify = int(
-            round((percentage_to_modify / 100) * total_elements)
-        )
-        selected_indices = np.random.choice(
-            total_elements, size=num_to_modify, replace=False
-        )
-
-        noise_values = np.random.uniform(low=-1, high=1, size=num_to_modify)
-        noise_values = (
-            np.sign(noise_values)
-            * np.abs(noise_values) ** exponent
-            * noise_level
-        )
-
-        noise_matrix = np.zeros_like(self.similarity_matrix)
-        i, j = upper_tri_indices
-        noise_matrix[i[selected_indices], j[selected_indices]] = noise_values
-
-        noise_matrix += noise_matrix.T
-        noisy_matrix = self.similarity_matrix + noise_matrix
-        np.fill_diagonal(noisy_matrix, 0)
-
-        self.options["matrix"]["noise"] = percentage_to_modify
-        self.options["matrix"]["noise_level"] = noise_level
-        self.options["matrix"]["noise_exponent"] = exponent
-        self.similarity_matrix = noisy_matrix
 
     def apply_matrix_treshold(self, percentage_to_remove=20):
         """
@@ -471,7 +380,7 @@ class Graph:
         where the edges between detected communities are removed and a
         dictionary of subgraphs for each community.
         """
-        self.louvain_partition = community.best_partition(self.graph)
+        self.louvain_partition = community_louvain.best_partition(self.graph)
         type_to_nodes = defaultdict(set)
         for node, node_type in self.louvain_partition.items():
             type_to_nodes[node_type].add(node)
@@ -650,10 +559,9 @@ class Graph:
         """
         Creates a copy of the graph to that the community detection alorithm
         was applied and changes the color and weights of the edges.
-        Inter community edges are set to grey with lower opacity and the edge
-        weight is multiplied by 0.1.
         Intra community edges are set to black with full opacity and the edge
-        weight is multiplied by 2.
+        weight is multiplied by 2. Inter community edges are set to grey with
+        lower opacity.
 
         Args:
             partition (list): List of sets representing the detected
@@ -678,7 +586,6 @@ class Graph:
                 data["weight"] *= 2
                 data["color"] = "#000000"
             else:
-                data["weight"] *= 0.1
                 data["color"] = "#4646464d"
 
         return adjusted_graph
@@ -721,7 +628,12 @@ class Graph:
     """
 
     def visualize_similarities_histogram(
-        self, similarity_matrix, folder_name=None, show=True, save=False, name="histogram.png"
+        self,
+        similarity_matrix,
+        folder_name=None,
+        show=True,
+        save=False,
+        name="histogram.png",
     ):
         """
         Visualize a histogram of the values in the similarity matrix. Zero
@@ -736,7 +648,9 @@ class Graph:
         if save:
             name_as_code = self.__get_name_as_code()
             if folder_name:
-                base_dir = os.path.join(f"exports/{folder_name}/{name_as_code}/images/")
+                base_dir = os.path.join(
+                    f"exports/{folder_name}/{name_as_code}/images/"
+                )
             else:
                 base_dir = os.path.join(f"exports/{name_as_code}/images/")
             os.makedirs(base_dir, exist_ok=True)
@@ -1158,7 +1072,9 @@ class Graph:
         name_as_code = self.__get_name_as_code()
         scores_filename = name_as_code + ".csv"
         if folder_name:
-            base_dir = os.path.join(f"exports/{folder_name}/{name_as_code}/csv")
+            base_dir = os.path.join(
+                f"exports/{folder_name}/{name_as_code}/csv"
+            )
         else:
             base_dir = os.path.join(f"exports/{name_as_code}/csv")
 
@@ -1190,10 +1106,14 @@ class Graph:
         """
         if export_histogram:
             self.visualize_similarities_histogram(
-                folder_name=folder_name,similarity_matrix=self.similarity_matrix, show=False, save=True
+                folder_name=folder_name,
+                similarity_matrix=self.similarity_matrix,
+                show=False,
+                save=True,
             )
             self.visualize_similarities_histogram(
-                folder_name=folder_name, similarity_matrix=self.original_similarity_matrix,
+                folder_name=folder_name,
+                similarity_matrix=self.original_similarity_matrix,
                 show=False,
                 save=True,
                 name="original-histogram.png",

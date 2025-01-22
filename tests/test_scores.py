@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 from similaritygraphgenerator.classes.compound_generator import Compound
 from similaritygraphgenerator.classes.graph import Graph
+from similaritygraphgenerator.classes.matrix import Matrix
 from similaritygraphgenerator.classes.scores import Scores
 from similaritygraphgenerator.data.compound_data import (
     type_rules1,
@@ -48,7 +49,13 @@ def some_compounds_list():
 
 @pytest.fixture
 def some_graph(some_recipe, some_compounds_list):
-    graph = Graph(some_recipe, some_compounds_list)
+    matrix = Matrix(some_compounds_list)
+    graph = Graph(
+        some_recipe,
+        some_compounds_list,
+        matrix.similarity_matrix,
+        matrix.options,
+    )
     graph.create_graph()
     return graph
 

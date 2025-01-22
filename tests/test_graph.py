@@ -4,6 +4,7 @@ from unittest import mock
 import pytest
 from similaritygraphgenerator.classes.compound_generator import Compound
 from similaritygraphgenerator.classes.graph import Graph
+from similaritygraphgenerator.classes.matrix import Matrix
 from similaritygraphgenerator.data.compound_data import (
     type_rules1,
     type_rules2,
@@ -47,29 +48,37 @@ def some_compounds_list():
 
 
 @pytest.fixture
-def original_graph(some_recipe, some_compounds_list):
-    graph = Graph(some_recipe, some_compounds_list)
+def some_matrix(some_compounds_list):
+    matrix = Matrix(some_compounds_list)
+    return matrix
+
+
+@pytest.fixture
+def some_other_matrix(some_compounds_list):
+    matrix = Matrix(some_compounds_list)
+    return matrix
+
+
+@pytest.fixture
+def original_graph(some_matrix, some_recipe, some_compounds_list):
+    graph = Graph(
+        some_recipe,
+        some_compounds_list,
+        some_matrix.similarity_matrix,
+        some_matrix.options,
+    )
     return graph
 
 
 @pytest.fixture
-def modified_graph(some_recipe, some_compounds_list):
-    graph = Graph(some_recipe, some_compounds_list)
+def modified_graph(some_other_matrix, some_recipe, some_compounds_list):
+    graph = Graph(
+        some_recipe,
+        some_compounds_list,
+        some_other_matrix.similarity_matrix,
+        some_other_matrix.options,
+    )
     return graph
-
-
-def test_add_no_noise_to_matrix(original_graph, modified_graph):
-    modified_graph.add_noise_to_matrix(percentage_to_modify=0)
-    assert (
-        original_graph.similarity_matrix == modified_graph.similarity_matrix
-    ).all()
-
-
-def test_add_noise_to_matrix(original_graph, modified_graph):
-    modified_graph.add_noise_to_matrix()
-    assert (
-        original_graph.similarity_matrix == modified_graph.similarity_matrix
-    ).any()
 
 
 def test_apply_no_matrix_treshold(original_graph, modified_graph):

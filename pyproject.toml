@@ -24,8 +24,8 @@ classifiers = [
 ]
 dependencies = [
     "numpy",
-    "community",
     "networkx",
+    "python-louvain",
     "pandas",
     "textdistance",
     "infomap",
