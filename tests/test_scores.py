@@ -88,7 +88,7 @@ def test_str(some_scores):
         "Homogeneity: 0.85\n"
         "Completeness: 0.90\n"
         "Community Size: 0.75 with 1.00 communities and 1.00 avg community size\n"
-        "Modularity: 0.65\n"+
+        "Modularity: 0.65\n"
         "Adjusted Rand Index: 0.78\n"
         "Normalized Mutual Information: 0.82\n"
         "Adjusted Mutual Information: 0.80\n"
