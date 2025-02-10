@@ -1,46 +1,32 @@
 import copy
 import os
-import random
 from collections import defaultdict
 
 import networkx as nx
 import numpy as np
-import pandas as pd
 from community import community_louvain
 from infomap import Infomap
 from matplotlib import pyplot as plt
 from networkx.algorithms.community import girvan_newman
-from similaritygraphgenerator.classes.scores import Scores
-from similaritygraphgenerator.data.color_data import colors
 
 
 class Graph:
-    def __init__(
-        self, recipe, compounds_list, similarity_matrix, matrix_options
-    ):
+    def __init__(self, similarity_matrix):
         """
         Constructor, initializes instance of Graph class.
-        Initializes options dictionary, that provides informations about the
-        applied configurations, changes and community detections algorithms
-        to the graph. Calculates a similarity matrix for the provided
-        compounds. Generates a graph from the similarity matrix and gets an
-        original distribution of the compounds. The original distribution
-        represents the "perfect" graph, where every node is in the correct
-        community according to the type attribute of each compound.
+        Initializes an "original_untouched_graph" representing
+        the graph based on the provided similarity matrix before
+        applying any modifications.
 
         Args:
-            compounds_list (list): List of compound objects
+            similarity_matrix: a matrix of similiarity measures
         """
         self.options = {
             "matrix": {
-                "noise": matrix_options["noise"],
-                "noise_level": matrix_options["noise_level"],
-                "noise_exponent": matrix_options["noise_exponent"],
                 "threshold": False,
                 "normalization": False,
             },
             "graph": {
-                "false_edges": False,
                 "edge_threshold_node_based": False,
                 "min_edges_per_node_node_based": False,
                 "edge_threshold_global": False,
@@ -55,47 +41,8 @@ class Graph:
                 "greedy_modularity": False,
             },
         }
-        self.recipe = recipe
-        self.compounds_list = compounds_list
-        self.node_types = [c.compound_type for c in self.compounds_list]
-
         self.similarity_matrix = similarity_matrix
         self.original_untouched_graph = nx.from_numpy_array(similarity_matrix)
-        nx.set_node_attributes(
-            self.original_untouched_graph, self.__get_compound_properties()
-        )
-        self.__get_original_distribution()
-
-    """
-    COMPOUNDS
-    """
-
-    def __get_original_distribution(self):
-        """
-        Every compound belongs to one of 8 Types. The original distribution of
-        the compounds represents the "perfect" distribution of the nodes, where
-        each node representing a compound, is assigned to the correct community
-        based on the compound type.
-
-        original_distribution: stores how many compounds per type were provided
-        original_partition_list:list of sets, grouping nodes into communtities,
-                                based on compound type
-        original_subgraphs:     dictionary of subgraphs, each representing the
-                                "perfect" community partition of the provided
-                                compounds
-        """
-        self.original_distribution = {f"Type{i}": 0 for i in range(1, 9)}
-        type_to_nodes = defaultdict(set)
-
-        for node in self.original_untouched_graph.nodes():
-            node_type = self.original_untouched_graph.nodes[node].get("type")
-            self.original_distribution[node_type] += 1
-            type_to_nodes[node_type].add(node)
-
-        self.original_partition_list = list(type_to_nodes.values())
-        self.original_subgraphs = self.__create_subgraphs(
-            self.original_partition_list
-        )
 
     """
     MATRIX
@@ -159,74 +106,6 @@ class Graph:
         properties of the compounds.
         """
         self.graph = nx.from_numpy_array(self.similarity_matrix)
-        nx.set_node_attributes(self.graph, self.__get_compound_properties())
-
-    def __get_compound_properties(self):
-        """
-        This function provides the properties of the compounds in order to use
-        them as attributes in the created graph.
-
-        Returns:
-            dictionary: keys are the compound identifier, values are:
-                        sequence of the compound
-                        type of the compound
-                        color based on the compound type
-        """
-        compound_properties = {}
-        for i, compound in enumerate(self.compounds_list):
-            compound_properties[i] = {
-                "sequence": compound.sequence,
-                "type": compound.compound_type,
-                "color": colors[compound.compound_type],
-            }
-        return compound_properties
-
-    def add_false_edges(self, percentage=10):
-        """
-        Add random non-exisitng false edges to the graph. Possible edges to add
-        are edges, that are not yet in the graph. The given percentage
-        determines how many edges should be added in relation to the number of
-        exisitng edges.
-        Edge weights are generated randomly, with few high edge weights and the
-        majority rather low.
-
-        Args:
-            percentage (int): Percentage of total edges to add as false edges.
-                            If exceeds number of possible edges, all possivble
-                            edges are added. Defaults to 10.
-        """
-        num_nodes = len(self.graph.nodes())
-        existing_edges = set(self.graph.edges())
-        possible_edges = [
-            (i, j) for i in range(num_nodes) for j in range(i + 1, num_nodes)
-        ]
-        potential_false_edges = [
-            edge for edge in possible_edges if edge not in existing_edges
-        ]
-        num_false_edges = int((percentage / 100) * len(possible_edges))
-        num_false_edges = (
-            num_false_edges
-            if len(potential_false_edges) > num_false_edges
-            else len(potential_false_edges)
-        )
-
-        false_edges = random.sample(potential_false_edges, num_false_edges)
-
-        num_high_weight_edges = int(num_false_edges * 0.1)
-        all_weights = np.concatenate(
-            [
-                np.random.uniform(0.5, 1.0, num_high_weight_edges),
-                np.random.uniform(
-                    0.0, 0.5, num_false_edges - num_high_weight_edges
-                ),
-            ]
-        )
-        np.random.shuffle(all_weights)
-
-        for edge, weight in zip(false_edges, all_weights):
-            self.graph.add_edge(edge[0], edge[1], weight=weight)
-
-        self.options["graph"]["false_edges"] = percentage
 
     def apply_edge_treshold_node_based(
         self, percentage_to_remove=20, min_edges_per_node=0
@@ -714,7 +593,6 @@ class Graph:
             graph,
             pos,
             node_size=100,
-            node_color=[colors[t] for t in self.node_types],
             ax=ax,
         )
         nx.draw_networkx_labels(graph, pos, labels=labels, ax=ax, font_size=6)
@@ -805,9 +683,6 @@ class Graph:
                 graph,
                 pos,
                 node_size=100,
-                node_color=[
-                    colors[self.node_types[node]] for node in graph.nodes()
-                ],
                 ax=ax,
             )
             nx.draw_networkx_labels(
@@ -866,17 +741,16 @@ class Graph:
         Generate a string representing the configuration of the graph.
 
         Generated string format:
-        'node-count'-'original-community-count'
-        _'noise'-'noise_level'-'noise_exponent'-'threshold'-'normalization'
-        _'false-edges'-'threshold-node-based'-'min_edges_node_based'-'threshold-global'-'min_edges_global'-'weight-normalization'
+        'node-count'
+        _'threshold'-'normalization'
+        _'threshold-node-based'-'min_edges_node_based'-'threshold-global'-'min_edges_global'-'weight-normalization'
         _'girvan_newman'-'louvain'-'lpa'-'infomap'-'greedy-modularity'
 
         example output:
-        340-8_10-0.1-3-20-1_10-90-5-60-5-0_1-1-1-1-0
+        340_20-1_10-90-5-60-5-0_1-1-1-1-0
         """
         name = ""
-        name += str(self.original_untouched_graph.number_of_nodes()) + "-"
-        name += str(len(self.original_subgraphs))
+        name += str(self.original_untouched_graph.number_of_nodes())
         for category, options in self.options.items():
             name += "_"
             for option, value in options.items():
@@ -887,111 +761,6 @@ class Graph:
             name = name[:-1]
 
         return name
-
-    """
-    SCORES
-    """
-
-    def calculate_scores(self):
-        """
-        Calculates the scores for for the original graph and original
-        partition, as well as the scores for all community detection
-        algorithms that have been applied to this graph.
-        Scores are calculated using the Scores class.
-        Scores are stored as attributes with the naming convention
-        <option>_scores (e.g. louvain_scores).
-        """
-        self.original_score = Scores(
-            "original",
-            self.graph,
-            self.original_subgraphs,
-            self.original_partition_list,
-        )
-        for option in self.options["community_detection"]:
-            subgraph_attr = f"{option}_subgraphs"
-            partition_attr = f"{option}_partition_list"
-            if (
-                self.options["community_detection"].get(option)
-                and hasattr(self, subgraph_attr)
-                and hasattr(self, partition_attr)
-            ):
-                subgraphs = getattr(self, subgraph_attr)
-                partition_list = getattr(self, partition_attr)
-                setattr(
-                    self,
-                    f"{option}_scores",
-                    Scores(option, self.graph, subgraphs, partition_list),
-                )
-
-    def print_all_scores(self):
-        """
-        Print the calculated scores for for the original graph and original
-        partition, as well as the scores for all community detection algorithms
-        that have been applied to this graph.
-        """
-        print(self.original_score)
-        for option in self.options["community_detection"]:
-            score = getattr(self, f"{option}_scores", None)
-            if self.options["community_detection"].get(option) and score:
-                print(score)
-
-    def __add_score(self, score):
-        self.data.append(
-            {
-                "Name": score.name,
-                "Homogeneity": score.homogeneity,
-                "Completeness": score.completeness,
-                "Community Size Score": score.community_size.score,
-                "Community Count": score.community_size.num_com,
-                "Avg Community Size": score.community_size.avg_com_size,
-                "Modularity": score.modularity,
-                "ARI": score.ari,
-                "NMI": score.nmi,
-                "AMI": score.ami,
-                "FMI": score.fmi,
-            }
-        )
-
-    def __add_options(self):
-        self.data.append(
-            {
-                "recipe": self.recipe,
-                "matrix_noise": self.options["matrix"]["noise"],
-                "matrix_noise_level": self.options["matrix"]["noise_level"],
-                "matrix_noise_exponent": self.options["matrix"][
-                    "noise_exponent"
-                ],
-                "matrix_threshold": self.options["matrix"]["threshold"],
-                "matrix_normalization": self.options["matrix"][
-                    "normalization"
-                ],
-                "false_edges": self.options["graph"]["false_edges"],
-                "edge_threshold_node_based": self.options["graph"][
-                    "edge_threshold_node_based"
-                ],
-                "min_edge_node_based": self.options["graph"][
-                    "min_edges_per_node_node_based"
-                ],
-                "edge_threshold_global": self.options["graph"][
-                    "edge_threshold_global"
-                ],
-                "min_edge_global": self.options["graph"][
-                    "min_edges_per_node_global"
-                ],
-                "edge_weight_normalization": self.options["graph"][
-                    "edge_weight_normalization"
-                ],
-                "girvan_newman": self.options["community_detection"][
-                    "girvan_newman"
-                ],
-                "louvain": self.options["community_detection"]["louvain"],
-                "lpa": self.options["community_detection"]["lpa"],
-                "infomap": self.options["community_detection"]["infomap"],
-                "greedy_modularity": self.options["community_detection"][
-                    "greedy_modularity"
-                ],
-            }
-        )
 
     """
     EXPORT
@@ -1009,23 +778,6 @@ class Graph:
         base_dir = os.path.join(f"exports/{name_as_code}/graphml")
         os.makedirs(base_dir, exist_ok=True)
         os.makedirs(os.path.join(base_dir, "original"), exist_ok=True)
-
-        nx.write_graphml(
-            self.original_untouched_graph,
-            f"exports/{name_as_code}/graphml/original/"
-            + f"untouched_graph_{name_as_code}.graphml",
-        )
-        nx.write_graphml(
-            self.graph,
-            f"exports/{name_as_code}/graphml/original/"
-            + f"graph_{name_as_code}.graphml",
-        )
-        for community_id, subgraph in self.original_subgraphs.items():
-            nx.write_graphml(
-                subgraph,
-                f"exports/{name_as_code}/graphml/original/"
-                + f"subgraph_{name_as_code}_community_{community_id}.graphml",
-            )
 
         for option in self.options["community_detection"]:
             if self.options["community_detection"].get(option):
@@ -1063,35 +815,6 @@ class Graph:
                         + ".graphml",
                     )
 
-    def export_to_csv(self, folder_name=None):
-        """
-        Export the options and calculated scores for the original
-        graph and partition, as well as the scores for all community
-        detection algorithms applied to the graph, into a CSV file.
-        """
-        name_as_code = self.__get_name_as_code()
-        scores_filename = name_as_code + ".csv"
-        if folder_name:
-            base_dir = os.path.join(
-                f"exports/{folder_name}/{name_as_code}/csv"
-            )
-        else:
-            base_dir = os.path.join(f"exports/{name_as_code}/csv")
-
-        self.data = []
-        self.__add_options()
-        self.__add_score(self.original_score)
-
-        for option in self.options["community_detection"]:
-            score = getattr(self, f"{option}_scores", None)
-            if self.options["community_detection"].get(option) and score:
-                self.__add_score(score)
-
-        os.makedirs(base_dir, exist_ok=True)
-        df = pd.DataFrame(self.data)
-        scores_file_path = os.path.join(base_dir, scores_filename)
-        df.to_csv(scores_file_path, index=False)
-
     def export_all_images(
         self,
         folder_name=None,
@@ -1111,28 +834,8 @@ class Graph:
                 show=False,
                 save=True,
             )
-            self.visualize_similarities_histogram(
-                folder_name=folder_name,
-                similarity_matrix=self.original_similarity_matrix,
-                show=False,
-                save=True,
-                name="original-histogram.png",
-            )
         if export_graph:
-            self.visualize_graph(
-                self.original_untouched_graph,
-                "original_untouched_graph",
-                show=False,
-                save=True,
-            )
             self.visualize_graph(self.graph, "graph", show=False, save=True)
-        if export_partition:
-            self.visualize_partition(
-                self.original_subgraphs,
-                title="original_subgraphs",
-                show=False,
-                save=True,
-            )
         if export_cd:
             for option in self.options["community_detection"]:
                 if self.options["community_detection"].get(option):

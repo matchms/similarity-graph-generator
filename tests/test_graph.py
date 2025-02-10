@@ -1,83 +1,198 @@
 import os
 from unittest import mock
 
+import numpy as np
 import pytest
-from similaritygraphgenerator.classes.compound_generator import Compound
 from similaritygraphgenerator.classes.graph import Graph
-from similaritygraphgenerator.classes.matrix import Matrix
-from similaritygraphgenerator.data.compound_data import (
-    type_rules1,
-    type_rules2,
-    type_rules3,
-    type_rules4,
-    type_rules5,
-    type_rules6,
-    type_rules7,
-    type_rules8,
-)
 
 
 @pytest.fixture
-def some_recipe():
-    recipe = [
-        (1, type_rules1),
-        (1, type_rules2),
-        (1, type_rules3),
-        (1, type_rules4),
-        (1, type_rules5),
-        (1, type_rules6),
-        (1, type_rules7),
-        (1, type_rules8),
-    ]
-    return recipe
-
-
-@pytest.fixture
-def some_compounds_list():
-    compounds_list = [
-        Compound(["A" "A" "A" "A" "C" "C" "A" "A" "A"], "Type1"),
-        Compound(["A" "A" "C" "C" "C" "B" "B" "E"], "Type2"),
-        Compound(["C" "C" "C" "C" "B" "E" "D"], "Type3"),
-        Compound(["E" "C" "C" "C" "C" "A" "E" "E"], "Type4"),
-        Compound(["C" "C" "A" "A" "A" "C" "C" "E" "A"], "Type5"),
-        Compound(["D" "D" "D" "D" "E" "C" "D" "E" "D" "C"], "Type6"),
-        Compound(["A" "A" "D" "D" "A" "E" "A" "D" "A" "A"], "Type7"),
-        Compound(["A" "B" "C" "D" "E" "A" "A" "A" "A" "A"], "Type8"),
-    ]
-    return compounds_list
-
-
-@pytest.fixture
-def some_matrix(some_compounds_list):
-    matrix = Matrix(some_compounds_list)
-    return matrix
-
-
-@pytest.fixture
-def some_other_matrix(some_compounds_list):
-    matrix = Matrix(some_compounds_list)
-    return matrix
-
-
-@pytest.fixture
-def original_graph(some_matrix, some_recipe, some_compounds_list):
-    graph = Graph(
-        some_recipe,
-        some_compounds_list,
-        some_matrix.similarity_matrix,
-        some_matrix.options,
+def some_matrix():
+    matrix = np.array(
+        [
+            [
+                0.0,
+                0.67142392,
+                0.67489393,
+                0.42128391,
+                0.50297495,
+                0.48906283,
+                0.79470758,
+                0.43822864,
+            ],
+            [
+                0.67142392,
+                0.0,
+                0.39038537,
+                0.14495787,
+                0.81712863,
+                0.37301025,
+                0.4951345,
+                0.28934718,
+            ],
+            [
+                0.67489393,
+                0.39038537,
+                0.0,
+                0.38316204,
+                0.51332427,
+                0.61081052,
+                0.38152867,
+                0.18041858,
+            ],
+            [
+                0.42128391,
+                0.14495787,
+                0.38316204,
+                0.0,
+                0.43912465,
+                0.43010169,
+                0.83708672,
+                0.83701597,
+            ],
+            [
+                0.50297495,
+                0.81712863,
+                0.51332427,
+                0.43912465,
+                0.0,
+                0.05450013,
+                0.34957277,
+                0.54488783,
+            ],
+            [
+                0.48906283,
+                0.37301025,
+                0.61081052,
+                0.43010169,
+                0.05450013,
+                0.0,
+                0.34578905,
+                0.56640406,
+            ],
+            [
+                0.79470758,
+                0.4951345,
+                0.38152867,
+                0.83708672,
+                0.34957277,
+                0.34578905,
+                0.0,
+                0.57578309,
+            ],
+            [
+                0.43822864,
+                0.28934718,
+                0.18041858,
+                0.83701597,
+                0.54488783,
+                0.56640406,
+                0.57578309,
+                0.0,
+            ],
+        ]
     )
+    return matrix
+
+
+@pytest.fixture
+def some_other_matrix():
+    matrix = np.array(
+        [
+            [
+                0.0,
+                0.67142392,
+                0.67489393,
+                0.42128391,
+                0.50297495,
+                0.48906283,
+                0.79470758,
+                0.43822864,
+            ],
+            [
+                0.67142392,
+                0.0,
+                0.39038537,
+                0.14495787,
+                0.81712863,
+                0.37301025,
+                0.4951345,
+                0.28934718,
+            ],
+            [
+                0.67489393,
+                0.39038537,
+                0.0,
+                0.38316204,
+                0.51332427,
+                0.61081052,
+                0.38152867,
+                0.18041858,
+            ],
+            [
+                0.42128391,
+                0.14495787,
+                0.38316204,
+                0.0,
+                0.43912465,
+                0.43010169,
+                0.83708672,
+                0.83701597,
+            ],
+            [
+                0.50297495,
+                0.81712863,
+                0.51332427,
+                0.43912465,
+                0.0,
+                0.05450013,
+                0.34957277,
+                0.54488783,
+            ],
+            [
+                0.48906283,
+                0.37301025,
+                0.61081052,
+                0.43010169,
+                0.05450013,
+                0.0,
+                0.34578905,
+                0.56640406,
+            ],
+            [
+                0.79470758,
+                0.4951345,
+                0.38152867,
+                0.83708672,
+                0.34957277,
+                0.34578905,
+                0.0,
+                0.57578309,
+            ],
+            [
+                0.43822864,
+                0.28934718,
+                0.18041858,
+                0.83701597,
+                0.54488783,
+                0.56640406,
+                0.57578309,
+                0.0,
+            ],
+        ]
+    )
+    return matrix
+
+
+@pytest.fixture
+def original_graph(some_matrix):
+    graph = Graph(some_matrix)
     return graph
 
 
 @pytest.fixture
-def modified_graph(some_other_matrix, some_recipe, some_compounds_list):
-    graph = Graph(
-        some_recipe,
-        some_compounds_list,
-        some_other_matrix.similarity_matrix,
-        some_other_matrix.options,
-    )
+def modified_graph(some_other_matrix):
+    graph = Graph(some_other_matrix)
     return graph
 
 
@@ -89,7 +204,7 @@ def test_apply_no_matrix_treshold(original_graph, modified_graph):
 
 
 def test_apply_matrix_treshold(original_graph, modified_graph):
-    modified_graph.apply_matrix_treshold()
+    modified_graph.apply_matrix_treshold(percentage_to_remove=80)
     assert not (
         original_graph.similarity_matrix == modified_graph.similarity_matrix
     ).all()
@@ -108,21 +223,6 @@ def test_create_graph(modified_graph):
     modified_graph.create_graph()
     assert len(modified_graph.graph.nodes()) == 8
     assert len(modified_graph.graph.edges()) == 28
-
-
-def test_add_no_false_edges(original_graph, modified_graph):
-    original_graph.create_graph()
-    modified_graph.create_graph()
-    modified_graph.add_false_edges()
-    assert original_graph.graph.edges() == modified_graph.graph.edges()
-
-
-def test_add_false_edges(original_graph, modified_graph):
-    original_graph.create_graph()
-    modified_graph.create_graph()
-    modified_graph.apply_edge_threshold_global(percentage_to_remove=100)
-    modified_graph.add_false_edges()
-    assert not original_graph.graph.edges() == modified_graph.graph.edges()
 
 
 def test_apply_edge_treshold_node_based(original_graph, modified_graph):
@@ -223,9 +323,7 @@ def test_visualize_similarities_histogram_save(modified_graph):
         modified_graph.visualize_similarities_histogram(
             modified_graph.similarity_matrix, show=False, save=True
         )
-        base_dir = os.path.join(
-            "exports/8-8_0-0-0-0-0_0-0-0-0-0-0_0-0-0-0-0/images/"
-        )
+        base_dir = os.path.join("exports/8_0-0_0-0-0-0-0_0-0-0-0-0/images/")
         mock_makedirs.assert_called_with(base_dir, exist_ok=True)
         name = "histogram.png"
         mock_save.assert_called_with(base_dir + name, dpi=100)
@@ -256,9 +354,7 @@ def test_visualize_graph_save(modified_graph):
         modified_graph.visualize_graph(
             modified_graph.graph, show=False, save=True, title="test"
         )
-        base_dir = os.path.join(
-            "exports/8-8_0-0-0-0-0_0-0-0-0-0-0_0-0-0-0-0/images"
-        )
+        base_dir = os.path.join("exports/8_0-0_0-0-0-0-0_0-0-0-0-0/images")
         mock_makedirs.assert_called_with(base_dir, exist_ok=True)
         name = "/test.png"
         mock_save.assert_called_with(base_dir + name, dpi=300)
@@ -287,15 +383,14 @@ def test_visualize_partition_save(modified_graph):
         mock.patch("matplotlib.pyplot.show") as mock_show,
     ):
         modified_graph.create_graph()
+        modified_graph.apply_louvain()
         modified_graph.visualize_partition(
-            modified_graph.original_subgraphs,
+            modified_graph.louvain_subgraphs,
             show=False,
             save=True,
             title="test",
         )
-        base_dir = os.path.join(
-            "exports/8-8_0-0-0-0-0_0-0-0-0-0-0_0-0-0-0-0/images"
-        )
+        base_dir = os.path.join("exports/8_0-0_0-0-0-0-0_0-1-0-0-0/images")
         mock_makedirs.assert_called_with(base_dir, exist_ok=True)
         name = "/test.png"
         mock_save.assert_called_with(base_dir + name, dpi=300)
@@ -309,21 +404,10 @@ def test_visualize_partition_show(modified_graph):
         mock.patch("matplotlib.pyplot.show") as mock_show,
     ):
         modified_graph.create_graph()
+        modified_graph.apply_louvain()
         modified_graph.visualize_partition(
-            modified_graph.original_subgraphs, show=True, save=False
+            modified_graph.louvain_subgraphs, show=True, save=False
         )
         mock_show.assert_called_once()
         mock_save.assert_not_called()
         mock_makedirs.assert_not_called()
-
-
-def test_calculate_scores(modified_graph):
-    modified_graph.create_graph()
-    modified_graph.apply_louvain()
-    modified_graph.calculate_scores()
-    assert modified_graph.original_score.homogeneity == 1
-    assert modified_graph.original_score.ari == 1
-    assert modified_graph.original_score.nmi == 1
-    assert modified_graph.louvain_scores.homogeneity > 0
-    assert modified_graph.louvain_scores.modularity > 0
-    assert modified_graph.louvain_scores.nmi > 0
