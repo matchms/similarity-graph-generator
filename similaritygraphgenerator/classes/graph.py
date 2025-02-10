@@ -22,14 +22,16 @@ class Graph:
         Constructor, initializes instance of Graph class.
         Initializes options dictionary, that provides informations about the
         applied configurations, changes and community detections algorithms
-        to the graph. Calculates a similarity matrix for the provided
-        compounds. Generates a graph from the similarity matrix and gets an
-        original distribution of the compounds. The original distribution
+        to the graph. Gets an original distribution of the compounds. This
         represents the "perfect" graph, where every node is in the correct
         community according to the type attribute of each compound.
 
         Args:
+            recipe (list): The recipe that was used to generate the compounds
             compounds_list (list): List of compound objects
+            similarity_matrix: matrix of similarity values of compounds list
+            matrix_options (dict): dictionary of the applied modifications
+                                   noise on the matrix
         """
         self.options = {
             "matrix": {
